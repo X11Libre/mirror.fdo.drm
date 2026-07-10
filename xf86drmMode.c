@@ -1033,6 +1033,23 @@ drm_public int drmHandleEvent(int fd, drmEventContextPtr evctx)
 	i = 0;
 	while (i < len) {
 		e = (struct drm_event *)(buffer + i);
+		if (len - i < (int)sizeof(*e)) {
+			fprintf(stderr, "drmHandleEvent: incomplete event header at offset %d, len %d, sizeof(*e) %zu\n", i, len, sizeof(*e));
+			errno = EINVAL;
+			return -1;
+		}
+		if (e->length < sizeof(*e)) {
+			fprintf(stderr, "drmHandleEvent: event length %u smaller than header size %zu\n",
+			       e->length, sizeof(*e));
+			errno = EINVAL;
+			return -1;
+		}
+		if (e->length > (uint32_t)(len - i)) {
+			fprintf(stderr, "drmHandleEvent: event length %u exceeds remaining buffer size %d\n",
+			       e->length, len - i);
+			errno = EINVAL;
+			return -1;
+		}
 		switch (e->type) {
 		case DRM_EVENT_VBLANK:
 			if (evctx->version < 1 ||
